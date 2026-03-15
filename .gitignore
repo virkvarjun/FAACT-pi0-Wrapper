@@ -1,14 +1,14 @@
 # Python
-__pycache__/
+**/__pycache__/
 *.egg-info/
 .eggs/
 dist/
 build/
 
-# Data and checkpoints
-data/
-checkpoints/
-eval/
+# Data and checkpoints (root only)
+/data/
+/checkpoints/
+/eval/
 
 # IDE
 .venv/
