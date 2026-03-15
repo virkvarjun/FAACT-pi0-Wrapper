@@ -1,0 +1,30 @@
+# FACT default config
+
+# Backbone
+backbone:
+  type: pi05
+  checkpoint: ""  # Path or HF id
+  device: cuda
+
+# FACT model
+fact:
+  model_type: mlp
+  input_dim: 14  # From action_chunk_mean
+  hidden_dims: [256, 128]
+  dropout: 0.1
+
+# Governor
+governor:
+  threshold: 0.5
+  strategy: threshold
+
+# Data
+data:
+  failure_horizon_k: 5
+  feature_key: action_chunk_mean
+
+# Training
+training:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
