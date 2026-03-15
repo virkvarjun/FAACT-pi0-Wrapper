@@ -1,4 +1,4 @@
-"""Build FACT training dataset from rollout logs."""
+"""Build FAACT training dataset from rollout logs."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from fact.data.schemas import ChunkRecord, EpisodeRecord
+from faact.data.schemas import ChunkRecord, EpisodeRecord
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def build_chunk_dataset(
     failure_horizon_k: int = 5,
     feature_key: str = "action_chunk_mean",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Build (X, y) arrays for FACT training.
+    """Build (X, y) arrays for FAACT training.
 
     For each chunk, X = feature vector, y = 1 if failure within next K chunks.
 

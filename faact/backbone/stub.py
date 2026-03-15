@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from fact.backbone.base import BackboneFeatures, ChunkProposal, BackbonePolicyWrapper
+from faact.backbone.base import BackboneFeatures, ChunkProposal, BackbonePolicyWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class StubBackboneWrapper(BackbonePolicyWrapper):
     """Placeholder backbone when PI05/LeRobot is not installed.
 
-    Returns zero actions. Use for testing the FACT pipeline without a real policy.
+    Returns zero actions. Use for testing the FAACT pipeline without a real policy.
     """
 
     def __init__(

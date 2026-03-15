@@ -1,4 +1,4 @@
-"""FACT model variants: MLP and temporal encoder."""
+"""FAACT model variants: MLP and temporal encoder."""
 
 from __future__ import annotations
 

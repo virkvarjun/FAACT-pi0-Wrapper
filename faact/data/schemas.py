@@ -10,13 +10,13 @@ import numpy as np
 
 @dataclass
 class ChunkRecord:
-    """Per-chunk record for training FACT."""
+    """Per-chunk record for training FAACT."""
 
     episode_id: int
     chunk_index: int
     step_index: int
     timestep: int
-    # Features for FACT
+    # Features for FAACT
     observation_embedding: np.ndarray | None = None
     action_chunk: np.ndarray | None = None
     action_chunk_mean: np.ndarray | None = None

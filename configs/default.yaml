@@ -1,4 +1,4 @@
-# FACT default config
+# FAACT default config
 
 # Backbone
 backbone:
@@ -6,7 +6,7 @@ backbone:
   checkpoint: ""  # Path or HF id
   device: cuda
 
-# FACT model
+# FAACT model
 fact:
   model_type: mlp
   input_dim: 14  # From action_chunk_mean

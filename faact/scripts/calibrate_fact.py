@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Calibrate FACT model: threshold sweep, ECE."""
+"""Calibrate FAACT model: threshold sweep, ECE."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.fact.models import FactMLP
-from fact.training.calibrate import temperature_scale, threshold_sweep, _compute_ece
+from faact.predictor.models import FactMLP
+from faact.training.calibrate import temperature_scale, threshold_sweep, _compute_ece
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

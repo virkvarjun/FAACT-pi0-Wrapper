@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run wrapped policy with FACT governor in the loop."""
+"""Run wrapped policy with FAACT governor in the loop."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.backbone.stub import StubBackboneWrapper
-from fact.fact.models import FactMLP
-from fact.governor import Governor, GovernorDecision
+from faact.backbone.stub import StubBackboneWrapper
+from faact.predictor.models import FactMLP
+from faact.governor import Governor, GovernorDecision
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def main() -> None:
 
     if args.backbone_checkpoint:
         try:
-            from fact.backbone.pi05_wrapper import Pi05PolicyWrapper
+            from faact.backbone.pi05_wrapper import Pi05PolicyWrapper
             backbone = Pi05PolicyWrapper(args.backbone_checkpoint)
         except ImportError:
             backbone = StubBackboneWrapper()

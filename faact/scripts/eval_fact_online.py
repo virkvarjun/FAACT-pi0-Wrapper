@@ -14,9 +14,9 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.backbone.stub import StubBackboneWrapper
-from fact.fact.models import FactMLP
-from fact.governor import Governor, GovernorDecision
+from faact.backbone.stub import StubBackboneWrapper
+from faact.predictor.models import FactMLP
+from faact.governor import Governor, GovernorDecision
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

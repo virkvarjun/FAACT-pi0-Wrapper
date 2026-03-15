@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Build FACT training dataset from rollout logs."""
+"""Build FAACT training dataset from rollout logs."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.data.dataset_builder import build_chunk_dataset
+from faact.data.dataset_builder import build_chunk_dataset
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

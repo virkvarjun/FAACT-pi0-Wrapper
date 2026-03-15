@@ -3,9 +3,9 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fact"
+name = "faact"
 version = "0.1.0"
-description = "Failure-Aware Chunk Transformer: research prototype for risk-aware supervisory wrapper around pi0.5"
+description = "FAACT: Failure-Aware Action Chunk Transformer - risk-aware supervisory wrapper around π₀.5"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -24,17 +24,17 @@ pi05 = ["lerobot"]  # Install from Research/lerobot: pip install -e ../Research/
 dev = ["pytest>=7.0", "ruff>=0.1"]
 
 [project.scripts]
-collect-rollouts = "fact.scripts.collect_rollouts:main"
-build-fact-dataset = "fact.scripts.build_fact_dataset:main"
-train-fact = "fact.scripts.train_fact:main"
-calibrate-fact = "fact.scripts.calibrate_fact:main"
-eval-fact-offline = "fact.scripts.eval_fact_offline:main"
-eval-fact-online = "fact.scripts.eval_fact_online:main"
-run-wrapped-policy = "fact.scripts.run_wrapped_policy:main"
+collect-rollouts = "faact.scripts.collect_rollouts:main"
+build-fact-dataset = "faact.scripts.build_fact_dataset:main"
+train-fact = "faact.scripts.train_fact:main"
+calibrate-fact = "faact.scripts.calibrate_fact:main"
+eval-fact-offline = "faact.scripts.eval_fact_offline:main"
+eval-fact-online = "faact.scripts.eval_fact_online:main"
+run-wrapped-policy = "faact.scripts.run_wrapped_policy:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["fact*"]
+include = ["faact*"]
 
 [tool.ruff]
 line-length = 100

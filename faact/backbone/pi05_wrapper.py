@@ -1,4 +1,4 @@
-"""π₀.5 policy wrapper for FACT backbone."""
+"""π₀.5 policy wrapper for FAACT backbone."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import torch
 
-from fact.backbone.base import BackboneFeatures, ChunkProposal, BackbonePolicyWrapper
+from faact.backbone.base import BackboneFeatures, ChunkProposal, BackbonePolicyWrapper
 
 logger = logging.getLogger(__name__)
 

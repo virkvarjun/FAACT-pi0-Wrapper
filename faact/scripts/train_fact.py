@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Train FACT model on chunk-level dataset."""
+"""Train FAACT model on chunk-level dataset."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.training.trainer import train_fact
+from faact.training.trainer import train_fact
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-# FACT Implementation Notes
+# FAACT Implementation Notes
 
 ## Changelog
 
@@ -6,7 +6,7 @@
 
 - Backbone: `Pi05PolicyWrapper` (LeRobot), `StubBackboneWrapper` (fallback)
 - Data: `RolloutLogger`, `build_chunk_dataset`, chunk-level labels (failure_within_k)
-- FACT: `FactMLP`, `FactTemporal` (temporal needs seq input)
+- FAACT: `FactMLP`, `FactTemporal` (temporal needs seq input)
 - Governor: threshold-based execute/reject
 - Scripts: collect, build_dataset, train, calibrate, eval_offline, eval_online, run_wrapped
 - Configs: default.yaml

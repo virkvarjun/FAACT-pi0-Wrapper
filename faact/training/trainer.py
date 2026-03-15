@@ -1,4 +1,4 @@
-"""FACT training loop."""
+"""FAACT training loop."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
-from fact.fact.models import FactMLP, FactTemporal
+from faact.predictor.models import FactMLP, FactTemporal
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def train_fact(
     lr: float = 1e-3,
     device: str | None = None,
 ) -> dict[str, Any]:
-    """Train FACT model on chunk-level data.
+    """Train FAACT model on chunk-level data.
 
     Returns:
         Dict with best_val_loss, metrics, checkpoint_path.

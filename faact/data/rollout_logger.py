@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from fact.data.schemas import ChunkRecord, EpisodeRecord, RolloutLog
+from faact.data.schemas import ChunkRecord, EpisodeRecord, RolloutLog
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def _serialize_episode(ep: EpisodeRecord) -> dict[str, Any]:
 
 
 class RolloutLogger:
-    """Log rollouts to disk for later FACT training."""
+    """Log rollouts to disk for later FAACT training."""
 
     def __init__(
         self,

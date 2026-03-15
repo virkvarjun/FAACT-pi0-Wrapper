@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Collect rollout data from backbone policy for FACT training."""
+"""Collect rollout data from backbone policy for FAACT training."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ import numpy as np
 # Add parent for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from fact.backbone.stub import StubBackboneWrapper
-from fact.data.rollout_logger import RolloutLogger
-from fact.data.schemas import ChunkRecord
+from faact.backbone.stub import StubBackboneWrapper
+from faact.data.rollout_logger import RolloutLogger
+from faact.data.schemas import ChunkRecord
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def main() -> None:
 
     if args.checkpoint:
         try:
-            from fact.backbone.pi05_wrapper import Pi05PolicyWrapper
+            from faact.backbone.pi05_wrapper import Pi05PolicyWrapper
             backbone = Pi05PolicyWrapper(args.checkpoint)
         except ImportError:
             logger.warning("lerobot not available, using stub")
