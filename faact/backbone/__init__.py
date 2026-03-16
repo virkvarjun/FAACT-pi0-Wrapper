@@ -1,14 +1,17 @@
-"""Backbone policy wrappers (π₀.5 inference)."""
+"""Backbone policy wrappers (π₀.5, ACT inference)."""
 
 from faact.backbone.base import BackboneFeatures
 
-__all__ = ["Pi05PolicyWrapper", "BackboneFeatures", "StubBackboneWrapper"]
+__all__ = ["Pi05PolicyWrapper", "ACTPolicyWrapper", "BackboneFeatures", "StubBackboneWrapper"]
 
 
 def __getattr__(name: str):
     if name == "Pi05PolicyWrapper":
         from faact.backbone.pi05_wrapper import Pi05PolicyWrapper
         return Pi05PolicyWrapper
+    if name == "ACTPolicyWrapper":
+        from faact.backbone.act_wrapper import ACTPolicyWrapper
+        return ACTPolicyWrapper
     if name == "StubBackboneWrapper":
         from faact.backbone.stub import StubBackboneWrapper
         return StubBackboneWrapper

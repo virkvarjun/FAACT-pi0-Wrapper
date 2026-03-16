@@ -91,14 +91,42 @@ python -m faact.scripts.run_wrapped_policy \
 ```bash
 # Collect from real PI05
 python -m faact.scripts.collect_rollouts \
+  --backbone pi05 \
   --checkpoint /path/to/pi05_checkpoint \
   --output_dir data/rollouts
+```
+
+## Real rollouts (ACT + gym-aloha)
+
+Use your trained ACT checkpoint with gym-aloha for real simulation rollouts:
+
+```bash
+# Install optional deps
+pip install gym-aloha  # or: pip install -e ".[aloha]"
+
+# Collect from ACT in AlohaTransferCube
+python -m faact.scripts.collect_rollouts \
+  --backbone act \
+  --checkpoint /path/to/act_checkpoint/pretrained_model \
+  --env_task AlohaTransferCube-v0 \
+  --env_type aloha \
+  --num_episodes 50 \
+  --device cuda
+```
+
+Then build dataset and train as usual:
+
+```bash
+python -m faact.scripts.build_fact_dataset \
+  --rollout_path data/rollouts/rollout.jsonl \
+  --feature_key action_chunk_mean
+python -m faact.scripts.train_fact --dataset data/fact_dataset.npz
 ```
 
 ## Current limitations
 
 - **PI05 internal features**: π₀.5 does not expose intermediate embeddings. FAACT uses `action_chunk_mean` as the primary feature. Future: add hooks or `return_features` to PI05 for richer inputs.
-- **Simulation**: Stub backbone returns zeros; use gym-aloha or similar for real rollouts.
+- **Simulation**: Stub returns zeros; use `--backbone act --env_task AlohaTransferCube-v0` for real ACT+gym-aloha rollouts.
 - **Calibration**: Basic temperature scaling; conformal methods not yet implemented.
 - **Recovery**: Governor only supports reject-and-replan; no fallback primitives.
 

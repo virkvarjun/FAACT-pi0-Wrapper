@@ -124,13 +124,15 @@ class RolloutLogger:
     def save(
         self,
         rollout_log: RolloutLog | None = None,
+        backbone_checkpoint: str = "",
+        task_ids: list[str] | None = None,
     ) -> Path:
         """Persist logged episodes to disk."""
         if rollout_log is None:
             rollout_log = RolloutLog(
                 run_id=self.run_id,
-                backbone_checkpoint="",
-                task_ids=[],
+                backbone_checkpoint=backbone_checkpoint,
+                task_ids=task_ids or [],
                 episodes=self._episodes,
             )
 

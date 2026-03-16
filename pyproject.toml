@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pi05 = ["lerobot"]  # Install from Research/lerobot: pip install -e ../Research/lerobot
+aloha = ["gymnasium", "gym-aloha"]  # For real Aloha rollouts
 dev = ["pytest>=7.0", "ruff>=0.1"]
 
 [project.scripts]
