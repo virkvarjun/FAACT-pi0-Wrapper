@@ -1,8 +1,7 @@
-"""ACT policy wrapper for FAACT backbone (bridge until PI05)."""
+"""ACT policy wrapper for FAACT backbone."""
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +9,7 @@ import numpy as np
 import torch
 
 from faact.backbone.base import BackboneFeatures, ChunkProposal, BackbonePolicyWrapper
-
-logger = logging.getLogger(__name__)
+from faact.backbone.features import derive_action_features, tensor_features_to_numpy
 
 try:
     from lerobot.policies.act.modeling_act import ACTPolicy
@@ -48,25 +46,81 @@ def _preprocess_obs(obs: dict) -> dict[str, torch.Tensor]:
         result["observation.state"] = state
     return result
 
+def _predict_act_with_features(policy, obs_processed, use_dropout: bool = False):
+    """Predict an ACT chunk and expose a stable feature payload."""
+    if hasattr(policy, "predict_action_chunk_with_features") and not use_dropout:
+        return policy.predict_action_chunk_with_features(obs_processed)
 
-def _features_to_numpy(features: dict[str, torch.Tensor]) -> dict[str, np.ndarray]:
-    """Extract decoder_mean, encoder_latent_token from ACT features."""
-    result = {}
-    for key, val in features.items():
-        v = val.detach().cpu()
-        if key == "encoder_out":
-            result["encoder_latent_token"] = v[:, 0, :].squeeze(0).numpy()
-        elif key == "decoder_out":
-            result["decoder_mean"] = v.mean(dim=1).squeeze(0).numpy()
-        elif key == "latent_sample":
-            result["latent_sample"] = v.squeeze(0).numpy()
+    from lerobot.utils.constants import OBS_IMAGES
+
+    batch = dict(obs_processed)
+    if getattr(policy, "config", None) and getattr(policy.config, "image_features", None):
+        batch[OBS_IMAGES] = [batch[key] for key in policy.config.image_features]
+
+    was_training = policy.training
+    if use_dropout:
+        policy.train()
+
+    with torch.inference_mode():
+        try:
+            out = policy.model(batch, return_features=True)
+        except TypeError:
+            out = None
         else:
-            result[key] = v.squeeze(0).numpy()
-    return result
+            actions = out[0]
+            features = out[2] if len(out) >= 3 else {}
+            if use_dropout and not was_training:
+                policy.eval()
+            return actions, features
+
+        captured = {}
+
+        def make_hook(name):
+            def hook(_module, _inputs, output):
+                captured[name] = output.detach()
+
+            return hook
+
+        handles = []
+        if hasattr(policy.model, "encoder"):
+            handles.append(policy.model.encoder.register_forward_hook(make_hook("encoder_out")))
+        if hasattr(policy.model, "decoder"):
+            handles.append(policy.model.decoder.register_forward_hook(make_hook("decoder_out")))
+
+        try:
+            actions = policy.model(batch)[0]
+        finally:
+            for handle in handles:
+                handle.remove()
+            if use_dropout and not was_training:
+                policy.eval()
+
+        batch_size = actions.shape[0]
+        cfg = getattr(policy.model, "config", policy.config)
+        latent_dim = getattr(cfg, "latent_dim", 32)
+        dim_model = getattr(cfg, "dim_model", 512)
+
+        def _transpose_if_sequence(value):
+            if value is not None and value.dim() == 3:
+                return value.transpose(0, 1)
+            return value
+
+        enc = _transpose_if_sequence(captured.get("encoder_out"))
+        dec = _transpose_if_sequence(captured.get("decoder_out"))
+        features = {
+            "latent_sample": torch.zeros(batch_size, latent_dim, device=actions.device, dtype=actions.dtype),
+            "encoder_out": enc
+            if enc is not None
+            else torch.zeros(batch_size, 1, dim_model, device=actions.device, dtype=actions.dtype),
+            "decoder_out": dec
+            if dec is not None
+            else torch.zeros(batch_size, actions.shape[1], dim_model, device=actions.device, dtype=actions.dtype),
+        }
+        return actions, features
 
 
 class ACTPolicyWrapper(BackbonePolicyWrapper):
-    """Wrapper around LeRobot ACT for chunk-level inference with decoder_mean features."""
+    """Wrapper around LeRobot ACT for chunk-level inference."""
 
     def __init__(
         self,
@@ -117,14 +171,9 @@ class ACTPolicyWrapper(BackbonePolicyWrapper):
     ) -> ChunkProposal:
         obs_t = _preprocess_obs(obs)
         batch = self._preprocessor(obs_t)
+        use_dropout = bool((context or {}).get("use_dropout", False))
 
-        with torch.inference_mode():
-            if hasattr(self._policy, "predict_action_chunk_with_features"):
-                actions, features = self._policy.predict_action_chunk_with_features(batch)
-            else:
-                actions = self._policy.predict_action_chunk(batch)
-                features = {}
-
+        actions, features = _predict_act_with_features(self._policy, batch, use_dropout=use_dropout)
         actions = actions[:, : self._chunk_size]
         # Postprocess each action to env scale
         actions_list = []
@@ -139,16 +188,17 @@ class ACTPolicyWrapper(BackbonePolicyWrapper):
         chunk_np = np.asarray(chunk_np, dtype=np.float32)
 
         features_out = None
-        if return_features and features:
-            feat_np = _features_to_numpy(features)
+        if return_features:
+            feat_np = tensor_features_to_numpy(features)
+            feat_np.update(derive_action_features(chunk_np, chunk_step_idx=0))
             decoder_mean = feat_np.get("decoder_mean")
             features_out = BackboneFeatures(
                 observation_embedding=feat_np.get("encoder_latent_token"),
                 action_chunk_embedding=decoder_mean,
-                raw={k: v for k, v in feat_np.items()},
+                raw=feat_np,
             )
-            if features_out.raw and "action_chunk_mean" not in features_out.raw and decoder_mean is not None:
-                features_out.raw["action_chunk_mean"] = decoder_mean
+            if features_out.raw is not None:
+                features_out.raw.setdefault("action_chunk_mean", chunk_np.mean(axis=0).astype(np.float32))
 
         proposal = ChunkProposal(
             actions=chunk_np,
