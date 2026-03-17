@@ -39,6 +39,9 @@ class EpisodeRunnerConfig:
     max_interventions_per_episode: int | None = None
     boundary_only_intervention: bool = False
     min_candidate_l2_to_baseline: float = 0.0
+    min_candidate_prefix_l2_to_baseline: float = 0.0
+    max_candidate_tail_l2_to_baseline: float | None = None
+    local_search_prefix_steps: int = 10
 
 
 def add_obs_noise(obs_dict: dict, noise_std: float = 0.03, rng: np.random.Generator | None = None) -> dict:
@@ -117,6 +120,47 @@ def compute_candidate_diversity(
         "candidate_l2_to_baseline_max": float(np.max(dists_to_baseline)),
         "candidate_pairwise_l2_mean": float(np.mean(pairwise_dists)) if pairwise_dists else 0.0,
         "candidate_pairwise_l2_max": float(np.max(pairwise_dists)) if pairwise_dists else 0.0,
+    }
+
+
+def compute_candidate_locality(
+    baseline_chunk: np.ndarray,
+    candidate_chunks: list[np.ndarray],
+    prefix_steps: int,
+) -> dict[str, float | list[float] | None]:
+    """Measure how much candidates edit the near-term prefix while preserving the tail."""
+    if not candidate_chunks:
+        return {
+            "candidate_prefix_l2_to_baseline": [],
+            "candidate_tail_l2_to_baseline": [],
+            "candidate_prefix_l2_mean": 0.0,
+            "candidate_tail_l2_mean": 0.0,
+            "candidate_prefix_l2_max": 0.0,
+            "candidate_tail_l2_max": 0.0,
+        }
+
+    prefix = max(1, min(int(prefix_steps), int(baseline_chunk.shape[0])))
+    baseline_prefix = baseline_chunk[:prefix].reshape(-1)
+    baseline_tail = baseline_chunk[prefix:].reshape(-1)
+
+    prefix_dists = []
+    tail_dists = []
+    for candidate in candidate_chunks:
+        candidate_prefix = candidate[:prefix].reshape(-1)
+        prefix_dists.append(float(np.linalg.norm(candidate_prefix - baseline_prefix)))
+        if baseline_tail.size == 0:
+            tail_dists.append(0.0)
+        else:
+            candidate_tail = candidate[prefix:].reshape(-1)
+            tail_dists.append(float(np.linalg.norm(candidate_tail - baseline_tail)))
+
+    return {
+        "candidate_prefix_l2_to_baseline": prefix_dists,
+        "candidate_tail_l2_to_baseline": tail_dists,
+        "candidate_prefix_l2_mean": float(np.mean(prefix_dists)),
+        "candidate_tail_l2_mean": float(np.mean(tail_dists)),
+        "candidate_prefix_l2_max": float(np.max(prefix_dists)),
+        "candidate_tail_l2_max": float(np.max(tail_dists)),
     }
 
 
@@ -304,6 +348,11 @@ def run_episode(
 
                 candidate_risks = [candidate[2] for candidate in candidates]
                 diversity = compute_candidate_diversity(baseline_chunk_np, candidate_chunk_nps)
+                locality = compute_candidate_locality(
+                    baseline_chunk_np,
+                    candidate_chunk_nps,
+                    prefix_steps=config.local_search_prefix_steps,
+                )
                 best_idx = int(np.argmin(candidate_risks)) if candidate_risks else -1
                 baseline_risk = last_risk_score.prob if last_risk_score is not None else None
                 best_risk = candidate_risks[best_idx] if candidate_risks else baseline_risk
@@ -317,19 +366,68 @@ def run_episode(
                     if candidate_risks and best_idx >= 0
                     else 0.0
                 )
+                prefix_dists = list(locality["candidate_prefix_l2_to_baseline"])
+                tail_dists = list(locality["candidate_tail_l2_to_baseline"])
+                eligible_indices = []
+                for idx, candidate_risk in enumerate(candidate_risks):
+                    if baseline_risk is None:
+                        continue
+                    risk_delta = candidate_risk - baseline_risk
+                    meets_margin_i = risk_delta <= -config.switch_margin
+                    meets_diversity_i = (
+                        float(diversity["candidate_l2_to_baseline"][idx]) >= config.min_candidate_l2_to_baseline
+                    )
+                    meets_prefix_i = prefix_dists[idx] >= config.min_candidate_prefix_l2_to_baseline
+                    meets_tail_i = (
+                        config.max_candidate_tail_l2_to_baseline is None
+                        or tail_dists[idx] <= config.max_candidate_tail_l2_to_baseline
+                    )
+                    if meets_margin_i and meets_diversity_i and meets_prefix_i and meets_tail_i:
+                        eligible_indices.append(idx)
+
+                if eligible_indices:
+                    best_idx = min(
+                        eligible_indices,
+                        key=lambda idx: (
+                            candidate_risks[idx],
+                            tail_dists[idx],
+                            -prefix_dists[idx],
+                        ),
+                    )
+                    best_risk = candidate_risks[best_idx]
+                    best_candidate_delta = best_risk - baseline_risk
+                    best_candidate_l2 = float(diversity["candidate_l2_to_baseline"][best_idx])
+
                 meets_margin = (
                     best_candidate_delta is not None
                     and best_candidate_delta <= -config.switch_margin
                 )
                 meets_diversity = best_candidate_l2 >= config.min_candidate_l2_to_baseline
-                accepted = bool(candidate_risks) and meets_margin and meets_diversity
+                best_candidate_prefix_l2 = (
+                    float(prefix_dists[best_idx]) if candidate_risks and best_idx >= 0 else 0.0
+                )
+                best_candidate_tail_l2 = (
+                    float(tail_dists[best_idx]) if candidate_risks and best_idx >= 0 else 0.0
+                )
+                meets_prefix = best_candidate_prefix_l2 >= config.min_candidate_prefix_l2_to_baseline
+                meets_tail = (
+                    config.max_candidate_tail_l2_to_baseline is None
+                    or best_candidate_tail_l2 <= config.max_candidate_tail_l2_to_baseline
+                )
+                accepted = bool(candidate_risks) and meets_margin and meets_diversity and meets_prefix and meets_tail
                 rejection_reason = ""
                 if not candidate_risks:
                     rejection_reason = "no_scored_candidates"
                 elif best_candidate_delta is None:
                     rejection_reason = "missing_risk_delta"
+                elif not eligible_indices:
+                    rejection_reason = "no_local_recovery_candidate"
                 elif not meets_diversity:
                     rejection_reason = "insufficient_diversity"
+                elif not meets_prefix:
+                    rejection_reason = "insufficient_prefix_change"
+                elif not meets_tail:
+                    rejection_reason = "tail_diverged_too_far"
                 elif not meets_margin:
                     rejection_reason = "insufficient_improvement"
 
@@ -367,15 +465,23 @@ def run_episode(
                         ),
                         "best_candidate_meets_margin": bool(meets_margin),
                         "best_candidate_meets_diversity": bool(meets_diversity),
+                        "best_candidate_meets_prefix_change": bool(meets_prefix),
+                        "best_candidate_meets_tail_limit": bool(meets_tail),
                         "best_candidate_l2_to_baseline": best_candidate_l2,
+                        "best_candidate_prefix_l2_to_baseline": best_candidate_prefix_l2,
+                        "best_candidate_tail_l2_to_baseline": best_candidate_tail_l2,
                         "candidate_sources": [candidate[3] for candidate in candidates],
                         "chosen_source": best_source if accepted else "",
                         "switch_margin": config.switch_margin,
                         "min_candidate_l2_to_baseline": config.min_candidate_l2_to_baseline,
+                        "min_candidate_prefix_l2_to_baseline": config.min_candidate_prefix_l2_to_baseline,
+                        "max_candidate_tail_l2_to_baseline": config.max_candidate_tail_l2_to_baseline,
+                        "local_search_prefix_steps": config.local_search_prefix_steps,
                         "n_candidates": len(candidates),
                         "candidate_risks": candidate_risks,
                         "chosen_idx": best_idx if accepted else -1,
                         **diversity,
+                        **locality,
                     }
                 )
 
@@ -457,6 +563,20 @@ def run_episode(
                 float(item["best_candidate_l2_to_baseline"])
                 for item in interventions
                 if item.get("best_candidate_l2_to_baseline") is not None
+            ]
+        ),
+        "mean_best_candidate_prefix_l2_to_baseline": _float_mean(
+            [
+                float(item["best_candidate_prefix_l2_to_baseline"])
+                for item in interventions
+                if item.get("best_candidate_prefix_l2_to_baseline") is not None
+            ]
+        ),
+        "mean_best_candidate_tail_l2_to_baseline": _float_mean(
+            [
+                float(item["best_candidate_tail_l2_to_baseline"])
+                for item in interventions
+                if item.get("best_candidate_tail_l2_to_baseline") is not None
             ]
         ),
         "rejection_reason_counts": {
